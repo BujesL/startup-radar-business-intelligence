@@ -1,13 +1,26 @@
-# Startup Radar POA
+# 📡 Startup Radar POA
+
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://www.python.org/)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?logo=supabase)](https://supabase.com/)
+[![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://vercel.com/)
 
 Estudo de caso: identificação de setores em crescimento na Região
 Metropolitana de Porto Alegre a partir de dados públicos de CNPJ da Receita
 Federal, com dashboard web e enriquecimento opcional de leads via Google
 Places.
 
+Todo o fluxo de ponta a ponta — **download de dados públicos → filtro
+regional em streaming → agregados em Postgres → dashboard Next.js → insight
+gerado por IA** — rodando com custo de infraestrutura próximo de zero
+(Supabase free tier + Vercel free tier).
+
 > **Escopo declarado:** exercício de estudo do fluxo Python → Supabase →
 > Vercel. Não é um serviço com atualização automática de dados — o pipeline
 > é executado manualmente e carrega um snapshot.
+
+Se esse projeto te ajudou a entender esse fluxo ou serviu de referência,
+considere deixar uma ⭐ — ajuda outras pessoas a encontrarem o repositório.
 
 ## Arquitetura
 
@@ -83,24 +96,3 @@ Acesse `http://localhost:3000` e entre com o usuário criado no passo 1.5.
 - Mapa completo do Brasil (hoje: apenas RMPA)
 - Exportação em Excel/PDF (hoje: apenas CSV)
 - Página de perfil detalhado por empresa com "empresas semelhantes"
-
-<!-- yolo merge test -->
-<!-- pull shark test -->
-<!-- pull shark batch 1 -->
-<!-- pull shark batch 2 -->
-<!-- pull shark batch 3 -->
-<!-- pull shark batch 4 -->
-<!-- pull shark batch 5 -->
-<!-- pull shark batch 6 -->
-<!-- pull shark batch 7 -->
-<!-- pull shark batch 8 -->
-<!-- pull shark batch 9 -->
-<!-- pull shark batch 10 -->
-<!-- pull shark batch 11 -->
-<!-- pull shark batch 12 -->
-<!-- pull shark batch 13 -->
-<!-- pull shark batch 14 -->
-<!-- pair extraordinaire test -->
-<!-- pair extraordinaire test 2 -->
-<!-- pair extraordinaire test 3 -->
-<!-- pair extraordinaire test 4 -->
