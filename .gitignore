@@ -1,0 +1,22 @@
+# Node / Next.js
+webapp/node_modules/
+webapp/.next/
+webapp/.env
+webapp/.env.local
+
+# Python
+.venv/
+pipeline/.venv/
+pipeline/__pycache__/
+pipeline/**/__pycache__/
+*.pyc
+pipeline/.env
+pipeline/data/raw/
+pipeline/data/staging/
+
+# Geral
+.DS_Store
+Thumbs.db
+*.log
+*.tsbuildinfo
+.claude/settings.local.json

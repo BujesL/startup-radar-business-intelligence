@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-base-950 text-base-50 antialiased;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-base-900 border border-base-700 rounded-card p-5;
+  }
+  .stat-value {
+    @apply font-mono text-3xl font-semibold tracking-tight text-base-50;
+  }
+  .stat-label {
+    @apply text-sm text-base-400 mt-1;
+  }
+  .badge-up {
+    @apply text-accent-bright bg-accent-dim/40 px-1.5 py-0.5 rounded text-xs font-mono;
+  }
+}
