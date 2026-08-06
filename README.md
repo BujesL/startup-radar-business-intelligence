@@ -96,3 +96,4 @@ Acesse `http://localhost:3000` e entre com o usuário criado no passo 1.5.
 <!-- pull shark batch 8 -->
 <!-- pull shark batch 9 -->
 <!-- pull shark batch 10 -->
+<!-- pull shark batch 11 -->
