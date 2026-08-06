@@ -83,3 +83,5 @@ Acesse `http://localhost:3000` e entre com o usuário criado no passo 1.5.
 - Mapa completo do Brasil (hoje: apenas RMPA)
 - Exportação em Excel/PDF (hoje: apenas CSV)
 - Página de perfil detalhado por empresa com "empresas semelhantes"
+
+<!-- yolo merge test -->
