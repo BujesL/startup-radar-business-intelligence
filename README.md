@@ -85,3 +85,4 @@ Acesse `http://localhost:3000` e entre com o usuário criado no passo 1.5.
 - Página de perfil detalhado por empresa com "empresas semelhantes"
 
 <!-- yolo merge test -->
+<!-- pull shark test -->
