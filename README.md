@@ -102,3 +102,4 @@ Acesse `http://localhost:3000` e entre com o usuário criado no passo 1.5.
 <!-- pull shark batch 14 -->
 <!-- pair extraordinaire test -->
 <!-- pair extraordinaire test 2 -->
+<!-- pair extraordinaire test 3 -->
