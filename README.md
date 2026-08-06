@@ -87,3 +87,4 @@ Acesse `http://localhost:3000` e entre com o usuário criado no passo 1.5.
 <!-- yolo merge test -->
 <!-- pull shark test -->
 <!-- pull shark batch 1 -->
+<!-- pull shark batch 2 -->
