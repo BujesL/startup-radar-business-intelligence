@@ -1,46 +1,100 @@
+<div align="center">
+
 # 📡 Startup Radar POA
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
-[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://www.python.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-Postgres-3FCF8E?logo=supabase)](https://supabase.com/)
-[![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://vercel.com/)
+**Pipeline de dados + dashboard para identificar setores em crescimento na Região Metropolitana de Porto Alegre**, a partir de dados públicos de CNPJ da Receita Federal.
 
-Estudo de caso: identificação de setores em crescimento na Região
-Metropolitana de Porto Alegre a partir de dados públicos de CNPJ da Receita
-Federal, com dashboard web e enriquecimento opcional de leads via Google
-Places.
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)
+![Polars](https://img.shields.io/badge/Polars-1.9-CD792C?style=flat-square)
+![Next.js](https://img.shields.io/badge/Next.js-15-000000?style=flat-square&logo=nextdotjs&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=flat-square&logo=supabase&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
 
-Todo o fluxo de ponta a ponta — **download de dados públicos → filtro
-regional em streaming → agregados em Postgres → dashboard Next.js → insight
-gerado por IA** — rodando com custo de infraestrutura próximo de zero
-(Supabase free tier + Vercel free tier).
+</div>
 
-> **Escopo declarado:** exercício de estudo do fluxo Python → Supabase →
-> Vercel. Não é um serviço com atualização automática de dados — o pipeline
-> é executado manualmente e carrega um snapshot.
+> **Escopo declarado:** este é um estudo de caso do fluxo `dados públicos → Python/Polars → Postgres → Next.js`. Não é um serviço com atualização automática — o pipeline roda sob demanda e carrega um snapshot mensal. As decisões de arquitetura abaixo foram tomadas conscientes desse escopo, não por limitação técnica.
 
-Se esse projeto te ajudou a entender esse fluxo ou serviu de referência,
-considere deixar uma ⭐ — ajuda outras pessoas a encontrarem o repositório.
+---
 
-## Arquitetura
+## 🎯 O problema
+
+A Receita Federal publica mensalmente o cadastro nacional de CNPJ (**centenas de milhões de registros**, distribuídos em arquivos `.zip` de CSV sem cabeçalho). Extrair um recorte útil disso — "quais setores estão abrindo mais empresas na Grande Porto Alegre nos últimos meses" — não é trivial: o arquivo nacional não cabe confortavelmente em memória em uma máquina comum, e não existe filtro por região no formato original.
+
+O Startup Radar POA resolve isso com um pipeline em três fases (filtrar → agregar → servir) e apresenta o resultado em um dashboard de leitura rápida, com um lead scoring simples e um insight gerado por IA para contextualizar os números.
+
+## 🏗️ Arquitetura
 
 ```
-database/   → schema.sql (Postgres/Supabase) + referência de municípios
-pipeline/   → scripts Python (download → filtro → transformação → carga → agregados → IA)
-webapp/     → dashboard Next.js 15 (deploy no Vercel)
+Receita Federal (CSV, escala nacional)
+        │  scan_csv() — Polars lazy, predicate pushdown
+        ▼
+┌─────────────────────────────────────────┐
+│  pipeline/  (Python)                     │
+│  1_download → 2_filter_region →          │
+│  3_transform → 4_load → 5_compute_stats  │
+│  [opcional] 6_enrich_places → 7_generate_insight │
+└─────────────────────────────────────────┘
+        │  COPY (bulk load)
+        ▼
+┌─────────────────────────────────────────┐
+│  Supabase (Postgres 15 + RLS)            │
+│  tabelas de fato + agregados pré-computados │
+└─────────────────────────────────────────┘
+        │  Server Components (SSR, sem chave exposta ao browser)
+        ▼
+┌─────────────────────────────────────────┐
+│  webapp/  (Next.js 15 + Vercel)          │
+│  dashboard read-only, autenticado         │
+└─────────────────────────────────────────┘
 ```
 
-## Passo a passo — do zero ao deploy
+## ⚙️ Decisões técnicas que valem destacar
+
+Estas são as escolhas que diferenciam o projeto de um script de ETL genérico — cada uma resolve um problema real de escala, custo ou segurança, e não é incidental:
+
+| Decisão | Por quê |
+|---|---|
+| **Filtro regional na origem com Polars `scan_csv` (lazy)** | O dataset nacional de estabelecimentos tem centenas de milhões de linhas. Ler tudo com `pandas.read_csv()` tentaria alocar todas as colunas em RAM antes de filtrar. O modo lazy do Polars aplica o filtro de município ainda no plano de execução (predicate pushdown), nunca materializando o dataset inteiro. |
+| **Agregados pré-computados, não calculados em runtime** | `estatisticas_crescimento` é recalculada pelo pipeline (com uma janela de média móvel de 6 meses via `AVG() OVER`). O dashboard só faz `SELECT`, nunca um `GROUP BY` pesado a cada carregamento de página. |
+| **Carga via `COPY`, não `INSERT` linha a linha** | Para centenas de milhares de registros, `COPY` é ordens de magnitude mais rápido — é o mecanismo de carga em lote recomendado pelo próprio Postgres. |
+| **RLS (Row Level Security) habilitado desde o schema inicial** | Leitura liberada para usuários autenticados; escrita restrita ao `service_role`, que só o pipeline possui. O frontend nunca tem permissão de escrita — mesmo que a chave `anon` fosse exposta, não haveria como alterar dados. |
+| **IA sem alucinação por design** | A Claude API nunca recebe uma pergunta livre sobre o dataset. Ela recebe apenas o JSON já agregado pelo Postgres (top setores por variação %) e sua única tarefa é narrar esse JSON em 2–3 frases. O JSON usado é salvo em `insights_ia.baseado_em`, então qualquer frase gerada é auditável contra o número exato que a originou. |
+| **Enriquecimento de leads limitado e em lote** | O Google Places só é chamado para o top-N leads dos setores em maior crescimento (`PLACES_ENRICHMENT_LIMIT`, configurável), nunca de forma síncrona a uma requisição do usuário. Idempotente via `ON CONFLICT` — pode ser re-executado sem duplicar nem estourar custo. |
+| **Autenticação via Server Components + middleware de refresh de sessão** | A sessão do Supabase é resolvida no servidor a partir dos cookies da requisição — nenhuma chave sensível chega ao browser. O middleware renova o token a cada request, porque Server Components não conseguem escrever cookies fora de uma Server Action. |
+| **Chaves naturais preservadas como `VARCHAR`, não `INT`** | Códigos de município e CNAE da Receita têm zeros à esquerda com significado semântico — convertê-los para inteiro corromperia o dado silenciosamente. |
+
+## 🧱 Stack
+
+| Camada | Tecnologia |
+|---|---|
+| **Pipeline de dados** | Python 3.11+, Polars 1.9 (lazy/streaming), psycopg 3 (`COPY`), httpx, Anthropic SDK |
+| **Banco de dados** | PostgreSQL 15 (Supabase), Row Level Security, índices compostos por município + data |
+| **Frontend** | Next.js 15 (App Router, Server Components), React 18, TypeScript 5, Tailwind CSS |
+| **Visualização** | Recharts (gráfico de crescimento), TanStack Table (tabela de leads com ordenação/filtro), React Leaflet |
+| **Auth & Infra** | Supabase Auth (`@supabase/ssr`), deploy no Vercel |
+| **IA** | Claude API (`claude-sonnet-4-5`) — geração de insight textual a partir de dados já agregados |
+
+## 📂 Estrutura do repositório
+
+```
+database/   → schema.sql (Postgres/Supabase) + referência dos 34 municípios da RMPA
+pipeline/   → scripts Python (download → filtro → transformação → carga → agregados → enriquecimento → IA)
+webapp/     → dashboard Next.js 15 (Server Components, auth, gráficos)
+```
+
+## 🚀 Como executar
 
 ### 1. Infraestrutura (Supabase)
 
-1. Crie um projeto em https://supabase.com (região `sa-east-1` para menor latência do Brasil).
-2. No SQL Editor do Supabase, execute `database/schema.sql` na íntegra.
-3. Em **Project Settings → API**, copie `Project URL` e a `anon public key`.
-4. Em **Project Settings → Database → Connection string → Session pooler**, copie a connection string (você vai precisar trocar `[YOUR-PASSWORD]` pela senha do banco).
-5. Em **Authentication → Users**, crie manualmente o(s) usuário(s) que vão acessar o dashboard (e-mail/senha) — não há tela pública de cadastro neste MVP, por design.
+```bash
+# 1. Crie um projeto em supabase.com (região sa-east-1 para menor latência)
+# 2. Execute database/schema.sql inteiro no SQL Editor
+# 3. Copie a Project URL, a anon key e a connection string (Session pooler)
+# 4. Crie manualmente o(s) usuário(s) de acesso em Authentication → Users
+```
 
-### 2. Pipeline de dados (local, uma vez)
+### 2. Pipeline de dados
 
 ```bash
 cd pipeline
@@ -48,8 +102,6 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # preencha SUPABASE_DB_URL
 
-# Confirme o identificador do lote vigente em:
-# https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/
 python 1_download.py --lote 2026-06
 python 0_load_reference_tables.py --lote 2026-06
 python 2_filter_region.py --lote 2026-06
@@ -57,42 +109,39 @@ python 3_transform.py --lote 2026-06
 python 4_load.py
 python 5_compute_stats.py
 
-# Opcionais (custam chamadas de API — preencha as chaves no .env antes)
+# opcionais — custam chamadas de API, preencha as chaves antes
 python 6_enrich_places.py
 python 7_generate_insight.py
 ```
 
-Cada script loga progresso e quantidade de linhas processadas. Se
-`1_download.py` falhar, é quase sempre porque o nome do lote ou dos arquivos
-mudou no site da Receita — confira a URL manualmente antes de reportar bug.
-
-### 3. Dashboard (local)
+### 3. Dashboard
 
 ```bash
 cd webapp
 npm install
-cp .env.example .env.local   # preencha NEXT_PUBLIC_SUPABASE_URL e ANON_KEY
+cp .env.example .env.local   # NEXT_PUBLIC_SUPABASE_URL e ANON_KEY
 npm run dev
 ```
 
-Acesse `http://localhost:3000` e entre com o usuário criado no passo 1.5.
-
 ### 4. Deploy
 
-1. **GitHub:** crie um repositório privado, `git init` na raiz deste projeto, commit e push. O `.gitignore` já exclui `node_modules`, `.env` e os dados brutos do pipeline.
-2. **Vercel:** importe o repositório, defina o **Root Directory** como `webapp/`, e configure as duas variáveis de ambiente (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) em Project Settings → Environment Variables. Deploy automático a cada push.
+Repositório no GitHub → import no Vercel → **Root Directory:** `webapp/` → configurar as duas variáveis de ambiente em Project Settings. Deploy automático a cada push.
 
-## Decisões técnicas relevantes (para a apresentação do case)
+## 🗺️ Escopo da região analisada
 
-- **Filtro regional na origem, não depois:** o pipeline resolve os códigos de município da RMPA e filtra com Polars em modo lazy/streaming, evitando carregar o dataset nacional inteiro em memória.
-- **Agregados pré-computados:** `estatisticas_crescimento` é recalculada pelo pipeline, não em runtime — o dashboard nunca faz `GROUP BY` pesado a cada carregamento de página.
-- **IA sem alucinação:** o insight da Claude API recebe só o JSON já agregado pelo Postgres; nunca uma pergunta livre sobre o dataset. O JSON usado é salvo em `insights_ia.baseado_em` para auditoria.
-- **RLS desde o schema inicial:** leitura liberada para usuários autenticados, escrita restrita ao `service_role` (só o pipeline tem essa chave, nunca o frontend).
-- **Enriquecimento de leads limitado e em lote:** Google Places só é chamado para o top-N leads (custo controlado), nunca de forma síncrona a uma requisição do usuário.
+34 municípios da Região Metropolitana de Porto Alegre (fonte: Metroplan/RS e IBGE), resolvidos dinamicamente pelo pipeline a partir da tabela de referência oficial que a própria Receita distribui junto ao lote — nunca por código fabricado manualmente, que é uma fonte comum de erro silencioso entre bases governamentais diferentes.
 
-## Roadmap (fora do escopo desta v1, por decisão deliberada de prazo)
+## 🔭 Roadmap (fora do escopo desta v1, por decisão deliberada de prazo)
 
-- Atualização automática recorrente do pipeline (ex.: cron mensal)
-- Mapa completo do Brasil (hoje: apenas RMPA)
-- Exportação em Excel/PDF (hoje: apenas CSV)
-- Página de perfil detalhado por empresa com "empresas semelhantes"
+- [ ] Atualização automática recorrente do pipeline (cron mensal)
+- [ ] Mapa completo do Brasil (hoje: apenas RMPA)
+- [ ] Exportação em Excel/PDF (hoje: apenas CSV)
+- [ ] Página de perfil detalhado por empresa, com "empresas semelhantes"
+
+---
+
+<div align="center">
+
+Desenvolvido por **[Vinícius Bujes de Lima](https://github.com/BujesL)**
+
+</div>
