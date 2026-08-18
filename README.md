@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📡 Startup Radar POA
+# Startup Radar POA
 
 **Pipeline de dados + dashboard para identificar setores em crescimento na Região Metropolitana de Porto Alegre**, a partir de dados públicos de CNPJ da Receita Federal.
 
@@ -17,13 +17,13 @@
 
 ---
 
-## 🎯 O problema
+## O problema
 
 A Receita Federal publica mensalmente o cadastro nacional de CNPJ (**centenas de milhões de registros**, distribuídos em arquivos `.zip` de CSV sem cabeçalho). Extrair um recorte útil disso — "quais setores estão abrindo mais empresas na Grande Porto Alegre nos últimos meses" — não é trivial: o arquivo nacional não cabe confortavelmente em memória em uma máquina comum, e não existe filtro por região no formato original.
 
 O Startup Radar POA resolve isso com um pipeline em três fases (filtrar → agregar → servir) e apresenta o resultado em um dashboard de leitura rápida, com um lead scoring simples e um insight gerado por IA para contextualizar os números.
 
-## 🏗️ Arquitetura
+## Arquitetura
 
 ```
 Receita Federal (CSV, escala nacional)
@@ -49,7 +49,7 @@ Receita Federal (CSV, escala nacional)
 └─────────────────────────────────────────┘
 ```
 
-## ⚙️ Decisões técnicas que valem destacar
+## Decisões técnicas que valem destacar
 
 Estas são as escolhas que diferenciam o projeto de um script de ETL genérico — cada uma resolve um problema real de escala, custo ou segurança, e não é incidental:
 
@@ -64,7 +64,7 @@ Estas são as escolhas que diferenciam o projeto de um script de ETL genérico �
 | **Autenticação via Server Components + middleware de refresh de sessão** | A sessão do Supabase é resolvida no servidor a partir dos cookies da requisição — nenhuma chave sensível chega ao browser. O middleware renova o token a cada request, porque Server Components não conseguem escrever cookies fora de uma Server Action. |
 | **Chaves naturais preservadas como `VARCHAR`, não `INT`** | Códigos de município e CNAE da Receita têm zeros à esquerda com significado semântico — convertê-los para inteiro corromperia o dado silenciosamente. |
 
-## 🧱 Stack
+## Stack
 
 | Camada | Tecnologia |
 |---|---|
@@ -75,7 +75,7 @@ Estas são as escolhas que diferenciam o projeto de um script de ETL genérico �
 | **Auth & Infra** | Supabase Auth (`@supabase/ssr`), deploy no Vercel |
 | **IA** | Claude API (`claude-sonnet-4-5`) — geração de insight textual a partir de dados já agregados |
 
-## 📂 Estrutura do repositório
+## Estrutura do repositório
 
 ```
 database/   → schema.sql (Postgres/Supabase) + referência dos 34 municípios da RMPA
@@ -83,7 +83,7 @@ pipeline/   → scripts Python (download → filtro → transformação → carg
 webapp/     → dashboard Next.js 15 (Server Components, auth, gráficos)
 ```
 
-## 🚀 Como executar
+## Como executar
 
 ### 1. Infraestrutura (Supabase)
 
@@ -127,11 +127,11 @@ npm run dev
 
 Repositório no GitHub → import no Vercel → **Root Directory:** `webapp/` → configurar as duas variáveis de ambiente em Project Settings. Deploy automático a cada push.
 
-## 🗺️ Escopo da região analisada
+## Escopo da região analisada
 
 34 municípios da Região Metropolitana de Porto Alegre (fonte: Metroplan/RS e IBGE), resolvidos dinamicamente pelo pipeline a partir da tabela de referência oficial que a própria Receita distribui junto ao lote — nunca por código fabricado manualmente, que é uma fonte comum de erro silencioso entre bases governamentais diferentes.
 
-## 🔭 Roadmap (fora do escopo desta v1, por decisão deliberada de prazo)
+## Roadmap (fora do escopo desta v1, por decisão deliberada de prazo)
 
 - [ ] Atualização automática recorrente do pipeline (cron mensal)
 - [ ] Mapa completo do Brasil (hoje: apenas RMPA)
